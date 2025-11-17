@@ -112,11 +112,17 @@ export async function POST (req: Request) {
 
 /* ------------------- APPLE MUSIC (A1 MODE) ------------------- */
 
-async function convertToAppleMusic (tracks: any[], playlistName?: string) {
-  const REGIONS = ['us', 'gb', 'de', 'ng', 'fr']
+/* ------------------- APPLE MUSIC (A1 MODE, CLEANED) ------------------- */
+
+async function convertToAppleMusic(tracks: any[], playlistName?: string) {
+  // Multi-region search improves match accuracy significantly
+  const REGIONS = ["us", "gb", "de", "ng", "fr"]
   const matches: { source: any; apple: any | null }[] = []
 
-  async function searchAppleByISRC (isrc: string) {
+  /** -------------- HELPERS -------------- **/
+
+  // Search by ISRC (best accuracy — exact match)
+  async function searchByISRC(isrc: string) {
     for (const region of REGIONS) {
       const url = `https://itunes.apple.com/lookup?isrc=${isrc}&entity=song&country=${region}`
       const res = await fetch(url)
@@ -124,22 +130,14 @@ async function convertToAppleMusic (tracks: any[], playlistName?: string) {
 
       if (data.results?.length > 0) {
         const best = data.results[0]
-        return {
-          trackId: best.trackId,
-          trackName: best.trackName,
-          artistName: best.artistName,
-          collectionName: best.collectionName,
-          previewUrl: best.previewUrl,
-          artworkUrl100: best.artworkUrl100,
-          appleMusicUrl: best.trackViewUrl,
-          region
-        }
+        return formatAppleResult(best, region)
       }
     }
     return null
   }
 
-  async function searchAppleByQuery (name: string, artists: string) {
+  // Search by text query (fallback when no ISRC or no match)
+  async function searchByQuery(name: string, artists: string) {
     const q = encodeURIComponent(`${name} ${artists}`)
     for (const region of REGIONS) {
       const url = `https://itunes.apple.com/search?term=${q}&limit=1&entity=song&country=${region}`
@@ -148,55 +146,63 @@ async function convertToAppleMusic (tracks: any[], playlistName?: string) {
 
       if (data.results?.length > 0) {
         const best = data.results[0]
-        return {
-          trackId: best.trackId,
-          trackName: best.trackName,
-          artistName: best.artistName,
-          collectionName: best.collectionName,
-          previewUrl: best.previewUrl,
-          artworkUrl100: best.artworkUrl100,
-          appleMusicUrl: best.trackViewUrl,
-          region
-        }
+        return formatAppleResult(best, region)
       }
     }
     return null
   }
 
+  // Format Apple Music API response into a clean object
+  function formatAppleResult(best: any, region: string) {
+    return {
+      trackId: best.trackId,
+      trackName: best.trackName,
+      artistName: best.artistName,
+      collectionName: best.collectionName,
+      previewUrl: best.previewUrl,
+      artworkUrl100: best.artworkUrl100,
+      appleMusicUrl: best.trackViewUrl,
+      region
+    }
+  }
+
+  /** -------------- MAIN MATCHING LOOP -------------- **/
+
   for (const t of tracks) {
     let result = null
 
-    // 1) Try ISRC first across multiple regions
+    // Try ISRC first (best)
     if (t.isrc) {
-      result = await searchAppleByISRC(t.isrc)
+      result = await searchByISRC(t.isrc)
     }
 
-    // 2) Fallback to text query across multi-regions
+    // Fallback: search by name+artist in all regions
     if (!result) {
-      result = await searchAppleByQuery(t.name, t.artists)
+      result = await searchByQuery(t.name, t.artists)
     }
 
-    matches.push({
-      source: t,
-      apple: result
-    })
+    matches.push({ source: t, apple: result })
   }
+
+  /** -------------- SUMMARY -------------- **/
 
   const matched = matches.filter(m => m.apple)
   const unmatched = matches.filter(m => !m.apple)
 
   const finalName =
-    (playlistName && playlistName.trim()) || 'FlowPlay – Spotify → Apple Music'
+    (playlistName && playlistName.trim()) ||
+    "FlowPlay – Spotify → Apple Music"
 
   return {
-    status: 'success',
-    from: 'Spotify',
-    to: 'Apple Music',
+    status: "success",
+    from: "Spotify",
+    to: "Apple Music",
+    playlist_name: finalName,
     regions_used: REGIONS,
-    target_playlist_name: finalName,
     total_tracks: tracks.length,
     matched_tracks: matched.length,
     unmatched_count: unmatched.length,
+
     matches,
     unmatched: unmatched.map(u => ({
       name: u.source.name,
