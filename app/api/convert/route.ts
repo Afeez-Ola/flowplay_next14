@@ -208,17 +208,19 @@ async function convertToAppleMusic (tracks: any[], playlistName?: string) {
 
 /* ------------------- YOUTUBE MUSIC ------------------- */
 
-async function convertToYouTube(
+async function convertToYouTube (
   tracks: any[],
   youtubeToken: string,
   playlistName?: string
 ) {
   const matches: { source: any; videoId: string | null }[] = []
 
+  // 1) Search YouTube for each track
   for (const t of tracks) {
     const query = encodeURIComponent(`${t.name} ${t.artists}`)
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${query}`,
+      'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=' +
+        query,
       {
         headers: {
           Authorization: `Bearer ${youtubeToken}`
@@ -239,9 +241,75 @@ async function convertToYouTube(
   const matched = matches.filter(m => m.videoId)
   const unmatched = matches.filter(m => !m.videoId)
 
+  // 2) Create YouTube playlist
+  const finalName =
+    (playlistName && playlistName.trim()) ||
+    'FlowPlay – Spotify → YouTube Music'
+
+  const createRes = await fetch(
+    'https://www.googleapis.com/youtube/v3/playlists?part=snippet,status',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${youtubeToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        snippet: {
+          title: finalName,
+          description: 'Playlist converted using FlowPlay'
+        },
+        status: {
+          privacyStatus: 'public'
+        }
+      })
+    }
+  )
+
+  const playlistData = await createRes.json()
+
+  if (!playlistData.id) {
+    return {
+      status: 'error',
+      step: 'playlist_create_failed',
+      youtube_error: playlistData
+    }
+  }
+
+  const newPlaylistId = playlistData.id as string
+
+  // 3) Insert matched videos into created playlist
+  for (const m of matched) {
+    if (!m.videoId) continue
+
+    await fetch(
+      'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${youtubeToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          snippet: {
+            playlistId: newPlaylistId,
+            resourceId: {
+              kind: 'youtube#video',
+              videoId: m.videoId
+            }
+          }
+        })
+      }
+    )
+  }
+
+  // 4) Return result
   return {
-    status: "partial",
-    note: "YouTube conversion is implemented but may fail due to API quota.",
+    status: 'success',
+    from: 'Spotify',
+    to: 'YouTube Music',
+    playlist_id: newPlaylistId,
+    playlist_url: `https://music.youtube.com/playlist?list=${newPlaylistId}`,
     total_tracks: tracks.length,
     matched_tracks: matched.length,
     unmatched: unmatched.map(u => ({
@@ -250,3 +318,4 @@ async function convertToYouTube(
     }))
   }
 }
+
