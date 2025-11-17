@@ -155,15 +155,26 @@ async function convertToAppleMusic(tracks: any[], playlistName?: string) {
   // Format Apple Music API response into a clean object
   function formatAppleResult(best: any, region: string) {
     return {
-      trackId: best.trackId,
-      trackName: best.trackName,
-      artistName: best.artistName,
-      collectionName: best.collectionName,
-      previewUrl: best.previewUrl,
-      artworkUrl100: best.artworkUrl100,
-      appleMusicUrl: best.trackViewUrl,
-      region
-    }
+  status: 'success',
+  from: 'Spotify',
+  to: 'Apple Music',
+
+  // ADD BOTH (for backwards compatibility)
+  target_playlist_name: finalName,
+  playlist_name: finalName,
+
+  regions_used: REGIONS,
+  total_tracks: tracks.length,
+  matched_tracks: matched.length,
+  unmatched_count: unmatched.length,
+
+  matches,
+  unmatched: unmatched.map(u => ({
+    name: u.source.name,
+    artists: u.source.artists
+  }))
+}
+
   }
 
   /** -------------- MAIN MATCHING LOOP -------------- **/
