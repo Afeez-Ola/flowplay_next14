@@ -78,7 +78,7 @@ export function ConversionWizard () {
         Connect YouTube Music
       </a>
 
-      {result && result.to === 'Apple Music' && (
+      {result && result.status === 'success' && result.to === 'Apple Music' && (
         <div className='p-3 mt-4 space-y-3 text-xs border rounded bg-slate-800 border-slate-700'>
           <h3 className='text-sm font-semibold text-white'>
             Apple Music Conversion Results
