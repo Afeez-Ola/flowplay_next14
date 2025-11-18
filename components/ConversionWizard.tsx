@@ -182,6 +182,104 @@ export function ConversionWizard () {
           )}
         </div>
       )}
+
+      {result && result.status === 'success' && result.to === 'YouTube Music' && (
+        <div className='p-3 mt-4 space-y-3 text-xs border rounded bg-slate-800 border-slate-700'>
+          <h3 className='text-sm font-semibold text-white'>
+            YouTube Music Conversion Results
+          </h3>
+
+          {/* Share Link */}
+          <button
+            className='px-3 py-1 text-white bg-blue-600 rounded'
+            onClick={() => {
+              if (result.playlist_url) {
+                navigator.clipboard.writeText(result.playlist_url)
+                alert('Playlist URL copied!')
+              } else {
+                alert('No playlist URL returned from YouTube')
+              }
+            }}
+          >
+            Copy Playlist Link
+          </button>
+
+          {/* Tabs */}
+          <div className='flex gap-3 text-xs text-white'>
+            <button
+              onClick={() => setResult({ ...result, __tab: 'matched' })}
+              className={`px-2 py-1 rounded ${
+                !result.__tab || result.__tab === 'matched'
+                  ? 'bg-brand-600'
+                  : 'bg-slate-700'
+              }`}
+            >
+              Matched ({result.matched_tracks})
+            </button>
+            <button
+              onClick={() => setResult({ ...result, __tab: 'unmatched' })}
+              className={`px-2 py-1 rounded ${
+                result.__tab === 'unmatched'
+                  ? 'bg-brand-600'
+                  : 'bg-slate-700'
+              }`}
+            >
+              Unmatched ({result.unmatched_count})
+            </button>
+          </div>
+
+          {/* Matched Tracks */}
+          {(!result.__tab || result.__tab === 'matched') && (
+            <div className='pr-2 space-y-2 overflow-y-auto max-h-72'>
+              {result.matches.map((m: any, i: number) => (
+                <div key={i} className='flex items-center gap-3 p-2 rounded bg-slate-900'>
+                  
+                  {/* Thumbnail */}
+                  {m.youtube?.thumbnailUrl ? (
+                    <img
+                      src={m.youtube.thumbnailUrl}
+                      className='w-12 h-12 rounded'
+                    />
+                  ) : (
+                    <div className='w-12 h-12 rounded bg-slate-700' />
+                  )}
+
+                  {/* Track Info */}
+                  <div className='flex-1'>
+                    <p className='text-sm font-semibold text-white'>
+                      {m.source.name}
+                    </p>
+                    <p className='text-slate-400'>{m.source.artists}</p>
+
+                    {m.youtube && (
+                      <a
+                        href={m.youtube.watchUrl}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='block mt-1 text-blue-400 underline'
+                      >
+                        Open in YouTube Music
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Unmatched Tracks */}
+          {result.__tab === 'unmatched' && (
+            <div className='pr-2 space-y-2 overflow-y-auto max-h-72'>
+              {result.unmatched.map((u: any, i: number) => (
+                <div key={i} className='p-2 rounded bg-slate-900'>
+                  <p className='font-semibold text-red-400'>{u.name}</p>
+                  <p className='text-slate-300'>{u.artists}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

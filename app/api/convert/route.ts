@@ -214,12 +214,25 @@ async function convertToAppleMusic(tracks: any[], playlistName?: string) {
 
 /* ------------------- YOUTUBE MUSIC ------------------- */
 
+/* ------------------- YOUTUBE MUSIC ------------------- */
+
 async function convertToYouTube (
   tracks: any[],
   youtubeToken: string,
   playlistName?: string
 ) {
-  const matches: { source: any; videoId: string | null }[] = []
+  // keep both videoId and a youtube object for UI
+  const matches: {
+    source: any
+    videoId: string | null
+    youtube: {
+      videoId: string
+      title: string | null
+      channelTitle: string | null
+      thumbnailUrl: string | null
+      watchUrl: string
+    } | null
+  }[] = []
 
   // 1) Search YouTube for each track
   for (const t of tracks) {
@@ -228,6 +241,7 @@ async function convertToYouTube (
       'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=' +
         query,
       {
+        method: 'GET',
         headers: {
           Authorization: `Bearer ${youtubeToken}`
         }
@@ -235,12 +249,29 @@ async function convertToYouTube (
     )
 
     const data = await res.json()
-    const videoId =
-      data.items?.length > 0 ? data.items[0].id?.videoId ?? null : null
+    const item = data.items?.[0] ?? null
+    const videoId = item?.id?.videoId ?? null
+    const snippet = item?.snippet
+
+    const youtube =
+      videoId != null
+        ? {
+            videoId,
+            title: snippet?.title ?? t.name,
+            channelTitle: snippet?.channelTitle ?? null,
+            thumbnailUrl:
+              snippet?.thumbnails?.medium?.url ??
+              snippet?.thumbnails?.high?.url ??
+              snippet?.thumbnails?.default?.url ??
+              null,
+            watchUrl: `https://music.youtube.com/watch?v=${videoId}`
+          }
+        : null
 
     matches.push({
       source: t,
-      videoId
+      videoId,
+      youtube
     })
   }
 
@@ -263,26 +294,18 @@ async function convertToYouTube (
       body: JSON.stringify({
         snippet: {
           title: finalName,
-          description: 'Playlist converted using FlowPlay'
+          description:
+            'Converted with FlowPlay – Playlist Converter (Spotify → YouTube Music)'
         },
         status: {
-          privacyStatus: 'public'
+          privacyStatus: 'private'
         }
       })
     }
   )
 
-  const playlistData = await createRes.json()
-
-  if (!playlistData.id) {
-    return {
-      status: 'error',
-      step: 'playlist_create_failed',
-      youtube_error: playlistData
-    }
-  }
-
-  const newPlaylistId = playlistData.id as string
+  const createData = await createRes.json()
+  const newPlaylistId = createData.id
 
   // 3) Insert matched videos into created playlist
   for (const m of matched) {
@@ -309,7 +332,7 @@ async function convertToYouTube (
     )
   }
 
-  // 4) Return result
+  // 4) Return result (mirror Apple Music structure)
   return {
     status: 'success',
     from: 'Spotify',
@@ -318,10 +341,13 @@ async function convertToYouTube (
     playlist_url: `https://music.youtube.com/playlist?list=${newPlaylistId}`,
     total_tracks: tracks.length,
     matched_tracks: matched.length,
+    unmatched_count: unmatched.length,
+    matches,
     unmatched: unmatched.map(u => ({
       name: u.source.name,
       artists: u.source.artists
     }))
   }
 }
+
 
