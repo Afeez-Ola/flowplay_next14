@@ -1,25 +1,102 @@
 'use client';
+
 import Link from "next/link";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+
   return (
-    <header className="border-b border-slate-800 bg-slate-950">
-      <nav className="container flex h-16 items-center justify-between">
-        <Link href="/" className="text-sm font-semibold">FlowPlay</Link>
-        <button className="md:hidden" onClick={() => setOpen(!open)}>☰</button>
-        <div className="hidden md:flex gap-6 text-sm">
-          <Link href="#features">Features</Link>
-          <Link href="#how">How it works</Link>
+    <header className="fixed top-0 left-0 z-50 w-full">
+      <motion.nav
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="relative flex items-center justify-between h-16 px-4 border-b shadow-xl backdrop-blur-xl bg-slate-900/40 border-white/10 md:px-8"
+      >
+        {/* Logo */}
+        <Link
+          href="/"
+          className="text-lg font-semibold tracking-wide text-transparent bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text"
+        >
+          FlowPlay
+        </Link>
+
+        {/* Desktop Links */}
+        <div className="items-center hidden gap-8 text-sm md:flex">
+          <Link
+            href="#features"
+            className="transition-colors duration-200 hover:text-green-400"
+          >
+            Features
+          </Link>
+
+          <Link
+            href="#how"
+            className="transition-colors duration-200 hover:text-green-400"
+          >
+            How it works
+          </Link>
+
+          {/* Platform indicators */}
+          <div className="flex items-center gap-3">
+            <span className="px-2 py-1 text-xs text-green-400 border rounded-md bg-green-500/20 border-green-400/30">
+              Spotify ✔
+            </span>
+            <span className="px-2 py-1 text-xs text-red-400 border rounded-md bg-red-500/20 border-red-400/30">
+              YouTube
+            </span>
+          </div>
         </div>
-      </nav>
-      {open && (
-        <div className="md:hidden container py-3 text-sm flex flex-col gap-3">
-          <Link href="#features">Features</Link>
-          <Link href="#how">How it works</Link>
-        </div>
-      )}
+
+        {/* Mobile Menu Button */}
+        <button
+          className="text-xl text-white md:hidden"
+          onClick={() => setOpen(!open)}
+        >
+          ☰
+        </button>
+      </motion.nav>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col gap-4 px-6 py-4 text-sm border-b shadow-lg md:hidden backdrop-blur-xl bg-slate-900/70 border-white/10"
+          >
+            <Link
+              href="#features"
+              onClick={() => setOpen(false)}
+              className="hover:text-green-400"
+            >
+              Features
+            </Link>
+
+            <Link
+              href="#how"
+              onClick={() => setOpen(false)}
+              className="hover:text-green-400"
+            >
+              How it works
+            </Link>
+
+            {/* Mobile indicators */}
+            <div className="flex gap-3 mt-2">
+              <span className="px-2 py-1 text-xs text-green-400 border rounded-md bg-green-500/20 border-green-400/30">
+                Spotify ✔
+              </span>
+              <span className="px-2 py-1 text-xs text-red-400 border rounded-md bg-red-500/20 border-red-400/30">
+                YouTube
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
