@@ -18,9 +18,14 @@ export function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="text-lg font-semibold tracking-wide text-transparent bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text"
+          className="flex items-center gap-2 group"
         >
-          FlowPlay
+          <div className="relative w-8 h-8 overflow-hidden rounded-lg shadow-lg shadow-emerald-500/20 transition-transform duration-300 group-hover:scale-110">
+             <img src="/logo.png" alt="FlowPlay Logo" className="w-full h-full object-cover" />
+          </div>
+          <span className="text-lg font-bold tracking-wide text-transparent bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text">
+            FlowPlay
+          </span>
         </Link>
 
         {/* Desktop Links */}
