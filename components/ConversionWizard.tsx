@@ -14,10 +14,19 @@ export default function ConversionWizard () {
   const [spotifyConnected, setSpotifyConnected] = useState(false)
   const [youtubeConnected, setYouTubeConnected] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [popup, setPopup] = useState<Window | null>(null);
 
   // Poll for auth status
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    // Detect redirect parameters after OAuth popup flow
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "spotify") {
+      setSpotifyConnected(true);
+    }
+    if (params.get("connected") === "youtube") {
+      setYouTubeConnected(true);
+    }
     async function checkAuth() {
       try {
         const res = await fetch("/api/auth/status");
@@ -31,7 +40,33 @@ export default function ConversionWizard () {
     
     checkAuth();
     interval = setInterval(checkAuth, 2000); // Poll every 2s
-    return () => clearInterval(interval);
+
+    // Listen for popup OAuth success messages
+    const messageHandler = (event: MessageEvent) => {
+      if (event.data === "spotify_connected") {
+        setSpotifyConnected(true);
+      }
+      if (event.data === "youtube_connected") {
+        setYouTubeConnected(true);
+      }
+    };
+    window.addEventListener("message", messageHandler);
+
+    // Detect when popup is closed and re-check auth
+    const popupInterval = setInterval(() => {
+      if (popup && popup.closed) {
+        checkAuth();                 // trigger auth refresh
+        clearInterval(popupInterval);
+        setPopup(null);
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener("message", messageHandler);
+      clearInterval(interval);
+      // clear popup close check
+      if (popupInterval) clearInterval(popupInterval);
+    };
   }, []);
 
   const openAuthPopup = (provider: 'spotify' | 'youtube') => {
@@ -39,12 +74,12 @@ export default function ConversionWizard () {
     const height = 600;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
-    
-    window.open(
+    const win = window.open(
       `/api/auth/${provider}`,
       `Connect ${provider}`,
       `width=${width},height=${height},left=${left},top=${top}`
     );
+    setPopup(win);
   };
 
   const themeClass = {
@@ -63,7 +98,7 @@ export default function ConversionWizard () {
       className={`relative p-8 space-y-6 overflow-hidden text-sm transition-all duration-700 ease-in-out rounded-3xl backdrop-blur-3xl border shadow-2xl before:absolute before:inset-0 before:rounded-3xl before:opacity-30 before:blur-[60px] before:pointer-events-none bg-gradient-to-br ${themeClass}`}
     >
       {/* Background Ambient Elements */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl">
         <div className="absolute top-0 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] animate-pulse-slow" />
         <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] animate-pulse-slow [animation-delay:2s]" />
       </div>
@@ -71,9 +106,9 @@ export default function ConversionWizard () {
       <div className="relative z-10 space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">Source Playlist</label>
+            <label className="ml-1 text-xs font-medium tracking-wider uppercase text-white/60">Source Playlist</label>
             <input
-              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all'
+              className='w-full p-4 text-base text-white transition-all border rounded-xl bg-white/5 border-white/10 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50'
               placeholder='Paste your playlist URL here...'
               value={url}
               onChange={e => setUrl(e.target.value)}
@@ -81,9 +116,9 @@ export default function ConversionWizard () {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">Target Name</label>
+            <label className="ml-1 text-xs font-medium tracking-wider uppercase text-white/60">Target Name</label>
             <input
-              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all'
+              className='w-full p-4 text-base text-white transition-all border rounded-xl bg-white/5 border-white/10 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50'
               placeholder='New playlist name (optional)'
               value={playlistName}
               onChange={e => setPlaylistName(e.target.value)}
@@ -93,36 +128,36 @@ export default function ConversionWizard () {
 
         <div className='grid grid-cols-2 gap-4'>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">From</label>
+            <label className="ml-1 text-xs font-medium tracking-wider uppercase text-white/60">From</label>
             <div className="relative">
               <select
-                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all cursor-pointer'
+                className='w-full p-3 text-white transition-all border appearance-none cursor-pointer rounded-xl bg-white/5 border-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500/50'
                 value={from}
                 onChange={e => setFrom(e.target.value)}
               >
                 {PROVIDERS.map(p => (
-                  <option key={p} className="bg-slate-900 text-white">{p}</option>
+                  <option key={p} className="text-white bg-slate-900">{p}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
+              <div className="absolute -translate-y-1/2 pointer-events-none right-3 top-1/2 text-white/40">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">To</label>
+            <label className="ml-1 text-xs font-medium tracking-wider uppercase text-white/60">To</label>
             <div className="relative">
               <select
-                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all cursor-pointer'
+                className='w-full p-3 text-white transition-all border appearance-none cursor-pointer rounded-xl bg-white/5 border-white/10 focus:outline-none focus:ring-2 focus:ring-orange-500/50'
                 value={to}
                 onChange={e => setTo(e.target.value)}
               >
                 {PROVIDERS.map(p => (
-                  <option key={p} className="bg-slate-900 text-white">{p}</option>
+                  <option key={p} className="text-white bg-slate-900">{p}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
+              <div className="absolute -translate-y-1/2 pointer-events-none right-3 top-1/2 text-white/40">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </div>
             </div>
@@ -130,31 +165,66 @@ export default function ConversionWizard () {
         </div>
 
         <div className="grid grid-cols-2 gap-4 pt-2">
-          <button
-            type="button"
-            disabled={spotifyConnected}
-            onClick={() => !spotifyConnected && openAuthPopup('spotify')}
-            className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
-              ${spotifyConnected 
-                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300 cursor-default shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
-                : 'bg-white/5 border-white/10 text-white/60 hover:bg-emerald-500/20 hover:border-emerald-500/30 hover:text-emerald-300'}`}
-          >
-            <span className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-white/30'}`} />
-            {spotifyConnected ? 'Spotify Connected' : 'Connect Spotify'}
-          </button>
-
-          <button
-            type="button"
-            disabled={youtubeConnected}
-            onClick={() => !youtubeConnected && openAuthPopup('youtube')}
-            className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
-              ${youtubeConnected 
-                ? 'bg-red-500/20 border-red-500/30 text-red-300 cursor-default shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-                : 'bg-white/5 border-white/10 text-white/60 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300'}`}
-          >
-            <span className={`w-2 h-2 rounded-full ${youtubeConnected ? 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)] animate-pulse' : 'bg-white/30'}`} />
-            {youtubeConnected ? 'YouTube Connected' : 'Connect YouTube'}
-          </button>
+          <div>
+            <button
+              type="button"
+              disabled={spotifyConnected}
+              onClick={() => !spotifyConnected && openAuthPopup('spotify')}
+              className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
+                ${spotifyConnected 
+                  ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300 cursor-default shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-emerald-500/20 hover:border-emerald-500/30 hover:text-emerald-300'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-white/30'}`} />
+              {spotifyConnected ? 'Spotify Connected' : 'Connect Spotify'}
+            </button>
+            {spotifyConnected && (
+              <div className="flex items-center justify-between mt-1 text-xs text-emerald-300 animate-pulse">
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-emerald-400 animate-ping" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="10" />
+                  </svg>
+                  <span className="font-medium">Connected</span>
+                </div>
+                <button
+                  onClick={() => openAuthPopup('spotify')}
+                  className="px-2 py-1 text-[10px] rounded-lg bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+          </div>
+          <div>
+            <button
+              type="button"
+              disabled={youtubeConnected}
+              onClick={() => !youtubeConnected && openAuthPopup('youtube')}
+              className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
+                ${youtubeConnected 
+                  ? 'bg-red-500/20 border-red-500/30 text-red-300 cursor-default shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${youtubeConnected ? 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)] animate-pulse' : 'bg-white/30'}`} />
+              {youtubeConnected ? 'YouTube Connected' : 'Connect YouTube'}
+            </button>
+            {youtubeConnected && (
+              <div className="flex items-center justify-between mt-1 text-xs text-red-300 animate-pulse">
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-red-400 animate-ping" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="10" />
+                  </svg>
+                  <span className="font-medium">Connected</span>
+                </div>
+                <button
+                  onClick={() => openAuthPopup('youtube')}
+                  className="px-2 py-1 text-[10px] rounded-lg bg-red-500/20 border border-red-500/40 hover:bg-red-500/30 transition-all"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <button
@@ -194,7 +264,7 @@ export default function ConversionWizard () {
           <div className="relative flex items-center justify-center gap-2">
             {loading ? (
               <>
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -223,7 +293,7 @@ export default function ConversionWizard () {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className='relative overflow-hidden rounded-2xl bg-white/5 border border-white/10'
+          className='relative overflow-hidden border rounded-2xl bg-white/5 border-white/10'
         >
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
@@ -267,7 +337,7 @@ export default function ConversionWizard () {
                     }}
                     className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-xs font-medium text-white group"
                   >
-                    <svg className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <svg className="w-4 h-4 transition-colors text-white/40 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     Copy Link
                   </button>
                   <a
@@ -283,35 +353,35 @@ export default function ConversionWizard () {
               )}
             </div>
 
-            <div className='space-y-2 overflow-y-auto max-h-60 custom-scrollbar pr-2'>
+            <div className='pr-2 space-y-2 overflow-y-auto max-h-60 custom-scrollbar'>
               {(!result.__tab || result.__tab === 'matched') ? (
                 result.matches.map((m: any, i: number) => (
-                  <div key={i} className='flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group'>
+                  <div key={i} className='flex items-center gap-3 p-2 transition-colors rounded-lg bg-white/5 hover:bg-white/10 group'>
                     {m.apple?.artworkUrl100 || m.youtube?.thumbnailUrl ? (
                       <img
                         src={m.apple?.artworkUrl100 || m.youtube?.thumbnailUrl}
                         className='w-10 h-10 rounded-md shadow-sm'
                       />
                     ) : (
-                      <div className='w-10 h-10 rounded-md bg-white/10 flex items-center justify-center'>
+                      <div className='flex items-center justify-center w-10 h-10 rounded-md bg-white/10'>
                         <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
                       </div>
                     )}
                     <div className='flex-1 min-w-0'>
                       <p className='text-sm font-medium text-white truncate'>{m.source.name}</p>
-                      <p className='text-xs text-white/60 truncate'>{m.source.artists}</p>
+                      <p className='text-xs truncate text-white/60'>{m.source.artists}</p>
                     </div>
                   </div>
                 ))
               ) : (
                 result.unmatched.map((u: any, i: number) => (
-                  <div key={i} className='flex items-center gap-3 p-2 rounded-lg bg-red-500/5 border border-red-500/10'>
-                    <div className='w-10 h-10 rounded-md bg-red-500/10 flex items-center justify-center'>
+                  <div key={i} className='flex items-center gap-3 p-2 border rounded-lg bg-red-500/5 border-red-500/10'>
+                    <div className='flex items-center justify-center w-10 h-10 rounded-md bg-red-500/10'>
                       <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </div>
                     <div className='flex-1 min-w-0'>
                       <p className='text-sm font-medium text-red-200 truncate'>{u.name}</p>
-                      <p className='text-xs text-red-400/60 truncate'>{u.artists}</p>
+                      <p className='text-xs truncate text-red-400/60'>{u.artists}</p>
                     </div>
                   </div>
                 ))
@@ -328,7 +398,7 @@ export default function ConversionWizard () {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
             onClick={() => setShowModal(false)}
           >
             <motion.div
@@ -336,19 +406,19 @@ export default function ConversionWizard () {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-slate-900 border border-white/10 shadow-2xl"
+              className="relative w-full max-w-sm overflow-hidden border shadow-2xl rounded-3xl bg-slate-900 border-white/10"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-purple-500/10" />
               
-              <div className="relative p-8 text-center space-y-6">
-                <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <div className="relative p-8 space-y-6 text-center">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full shadow-lg bg-gradient-to-br from-orange-400 to-pink-500 shadow-orange-500/20">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                 </div>
 
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold text-white">Success!</h2>
                   <p className="text-white/60">
-                    Your playlist has been converted to <span className="text-white font-medium">{result.to}</span>
+                    Your playlist has been converted to <span className="font-medium text-white">{result.to}</span>
                   </p>
                 </div>
 
@@ -359,14 +429,14 @@ export default function ConversionWizard () {
                         navigator.clipboard.writeText(result.playlist_url)
                         alert('Link copied!')
                       }}
-                      className="w-full py-3 px-4 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors"
+                      className="w-full px-4 py-3 font-semibold transition-colors bg-white rounded-xl text-slate-900 hover:bg-slate-100"
                     >
                       Copy Playlist Link
                     </button>
                   )}
                   <button
                     onClick={() => setShowModal(false)}
-                    className="w-full py-3 px-4 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-colors"
+                    className="w-full px-4 py-3 font-medium text-white transition-colors rounded-xl bg-white/5 hover:bg-white/10"
                   >
                     Close
                   </button>

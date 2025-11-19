@@ -13,7 +13,21 @@ export async function GET () {
     prompt: 'consent'
   })
 
-  return NextResponse.redirect(
-    'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString()
-  )
+  const authUrl =
+    'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+
+  const html = `
+    <html>
+      <body>
+        <script>
+          window.location.href = "${authUrl}";
+        </script>
+      </body>
+    </html>
+  `;
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html" }
+  });
 }

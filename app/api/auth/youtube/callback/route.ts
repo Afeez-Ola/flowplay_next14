@@ -49,10 +49,33 @@ export async function GET (req: Request) {
       path: '/'
     }
 
-    cookies().set('youtube_access_token', accessToken, cookieOpts)
-    cookies().set('youtube_refresh_token', refreshToken, cookieOpts)
+    const responseHtml = `
+      <html>
+        <body style="background:#050816; color:white; display:flex; align-items:center; justify-content:center; height:100vh; font-family:system-ui;">
+          <script>
+            try {
+              if (window.opener) {
+                window.opener.postMessage('youtube_connected', '*');
+              }
+              window.close();
+            } catch (e) {
+              console.error(e);
+            }
+          </script>
+          <p>You can close this window.</p>
+        </body>
+      </html>
+    `;
 
-    return NextResponse.redirect(new URL('/convert?connected=youtube', req.url))
+    const response = new NextResponse(responseHtml, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
+
+    response.cookies.set('youtube_access_token', accessToken, cookieOpts);
+    response.cookies.set('youtube_refresh_token', refreshToken, cookieOpts);
+
+    return response;
   } catch (err) {
     console.error('YouTube callback error:', err)
     return NextResponse.redirect(

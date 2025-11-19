@@ -41,7 +41,9 @@ export async function POST (req: Request) {
     }
 
     // Get Spotify token
-    const spotifyToken = getSpotifyToken(req)
+    const cookieHeader = req.headers.get('cookie') || '';
+    const spotifyMatch = cookieHeader.match(/spotify_access_token=([^;]+)/);
+    const spotifyToken = spotifyMatch?.[1] || null;
     if (!spotifyToken) {
       return NextResponse.json(
         { error: 'Spotify not authenticated' },
@@ -221,37 +223,70 @@ async function convertToYouTube (
   youtubeToken: string,
   playlistName?: string
 ) {
-  // keep both videoId and a youtube object for UI
-  const matches: {
-    source: any
-    videoId: string | null
-    youtube: {
-      videoId: string
-      title: string | null
-      channelTitle: string | null
-      thumbnailUrl: string | null
-      watchUrl: string
-    } | null
-  }[] = []
-
-  // 1) Search YouTube for each track
-  for (const t of tracks) {
-    const query = encodeURIComponent(`${t.name} ${t.artists}`)
+  const matches: { source: any; videoId: string | null; youtube: any | null }[] = [];
+  // --- ISRC MATCHING (HIGHEST ACCURACY) ---
+  async function searchYouTubeByISRC(isrc: string) {
+    // YouTube API supports "isrc:XXXXX" advanced queries
+    const encoded = encodeURIComponent(`isrc:${isrc}`);
     const res = await fetch(
-      'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=' +
-        query,
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=1&q=${encoded}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${youtubeToken}`
+          Authorization: `Bearer ${youtubeToken}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+    if (data.items?.length > 0) {
+      return data.items[0];
+    }
+    return null;
+  }
+
+  // 1) Enhanced YouTube matching engine
+  for (const t of tracks) {
+    // Try ISRC first
+    let bestItem = null;
+
+    if (t.isrc) {
+      bestItem = await searchYouTubeByISRC(t.isrc);
+    }
+
+    // Only do text search if ISRC didn't match
+    if (!bestItem) {
+      const queries = [
+        `${t.name} ${t.artists} audio`,
+        `${t.name} ${t.artists} official audio`,
+        `${t.artists} ${t.name} lyric`,
+        `${t.name} ${t.artists} topic`,
+        `${t.name} ${t.artists} auto-generated`,
+      ];
+
+      // Try multiple search patterns, stop at first valid match
+      for (const q of queries) {
+        const encoded = encodeURIComponent(q);
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=1&q=${encoded}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${youtubeToken}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        if (data.items?.length > 0) {
+          bestItem = data.items[0];
+          break;
         }
       }
-    )
+    }
 
-    const data = await res.json()
-    const item = data.items?.[0] ?? null
-    const videoId = item?.id?.videoId ?? null
-    const snippet = item?.snippet
+    const videoId = bestItem?.id?.videoId ?? null;
+    const snippet = bestItem?.snippet;
 
     const youtube =
       videoId != null
@@ -264,15 +299,15 @@ async function convertToYouTube (
               snippet?.thumbnails?.high?.url ??
               snippet?.thumbnails?.default?.url ??
               null,
-            watchUrl: `https://music.youtube.com/watch?v=${videoId}`
+            watchUrl: `https://music.youtube.com/watch?v=${videoId}`,
           }
-        : null
+        : null;
 
     matches.push({
       source: t,
       videoId,
-      youtube
-    })
+      youtube,
+    });
   }
 
   const matched = matches.filter(m => m.videoId)
@@ -349,5 +384,3 @@ async function convertToYouTube (
     }))
   }
 }
-
-
