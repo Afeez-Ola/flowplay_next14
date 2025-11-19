@@ -1,6 +1,5 @@
 'use client'
-import React from 'react'
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const PROVIDERS = ['Spotify', 'Apple Music', 'YouTube Music', 'Tidal', 'Deezer']
@@ -16,7 +15,9 @@ export default function ConversionWizard () {
   const [youtubeConnected, setYouTubeConnected] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
-  React.useEffect(() => {
+  // Poll for auth status
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
     async function checkAuth() {
       try {
         const res = await fetch("/api/auth/status");
@@ -27,15 +28,31 @@ export default function ConversionWizard () {
         console.error("Auth check failed", e);
       }
     }
+    
     checkAuth();
+    interval = setInterval(checkAuth, 2000); // Poll every 2s
+    return () => clearInterval(interval);
   }, []);
 
+  const openAuthPopup = (provider: 'spotify' | 'youtube') => {
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    
+    window.open(
+      `/api/auth/${provider}`,
+      `Connect ${provider}`,
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+  };
+
   const themeClass = {
-    'Spotify': 'from-emerald-900/40 via-emerald-950/60 to-black border-emerald-500/20 shadow-emerald-500/10',
+    'Spotify': 'from-orange-900/40 via-pink-950/60 to-black border-orange-500/20 shadow-orange-500/10',
     'Apple Music': 'from-pink-900/40 via-purple-950/60 to-black border-pink-500/20 shadow-pink-500/10',
-    'YouTube Music': 'from-red-900/40 via-red-950/60 to-black border-red-500/20 shadow-red-500/10',
-    'Tidal': 'from-blue-900/40 via-blue-950/60 to-black border-blue-500/20 shadow-blue-500/10',
-    'Deezer': 'from-indigo-900/40 via-indigo-950/60 to-black border-indigo-500/20 shadow-indigo-500/10'
+    'YouTube Music': 'from-red-900/40 via-orange-950/60 to-black border-red-500/20 shadow-red-500/10',
+    'Tidal': 'from-purple-900/40 via-indigo-950/60 to-black border-purple-500/20 shadow-purple-500/10',
+    'Deezer': 'from-indigo-900/40 via-blue-950/60 to-black border-indigo-500/20 shadow-indigo-500/10'
   }[to];
 
   return (
@@ -47,16 +64,16 @@ export default function ConversionWizard () {
     >
       {/* Background Ambient Elements */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
-        <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/5 rounded-full blur-[80px] animate-pulse-slow" />
-        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-[80px] animate-pulse-slow [animation-delay:2s]" />
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] animate-pulse-slow" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] animate-pulse-slow [animation-delay:2s]" />
       </div>
 
       <div className="relative z-10 space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">Source Playlist</label>
+            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">Source Playlist</label>
             <input
-              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all'
+              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all'
               placeholder='Paste your playlist URL here...'
               value={url}
               onChange={e => setUrl(e.target.value)}
@@ -64,9 +81,9 @@ export default function ConversionWizard () {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">Target Name</label>
+            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">Target Name</label>
             <input
-              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all'
+              className='w-full p-4 text-base border rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all'
               placeholder='New playlist name (optional)'
               value={playlistName}
               onChange={e => setPlaylistName(e.target.value)}
@@ -76,10 +93,10 @@ export default function ConversionWizard () {
 
         <div className='grid grid-cols-2 gap-4'>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">From</label>
+            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">From</label>
             <div className="relative">
               <select
-                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer'
+                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all cursor-pointer'
                 value={from}
                 onChange={e => setFrom(e.target.value)}
               >
@@ -87,17 +104,17 @@ export default function ConversionWizard () {
                   <option key={p} className="bg-slate-900 text-white">{p}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider ml-1">To</label>
+            <label className="text-xs font-medium text-white/60 uppercase tracking-wider ml-1">To</label>
             <div className="relative">
               <select
-                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer'
+                className='w-full p-3 appearance-none border rounded-xl bg-white/5 border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all cursor-pointer'
                 value={to}
                 onChange={e => setTo(e.target.value)}
               >
@@ -105,7 +122,7 @@ export default function ConversionWizard () {
                   <option key={p} className="bg-slate-900 text-white">{p}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </div>
             </div>
@@ -114,36 +131,28 @@ export default function ConversionWizard () {
 
         <div className="grid grid-cols-2 gap-4 pt-2">
           <button
+            type="button"
             disabled={spotifyConnected}
-            onClick={() => {
-              if (!spotifyConnected) {
-                window.location.href = '/api/auth/spotify'
-                setSpotifyConnected(true)
-              }
-            }}
+            onClick={() => !spotifyConnected && openAuthPopup('spotify')}
             className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
               ${spotifyConnected 
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 cursor-default' 
-                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-emerald-500/20 hover:border-emerald-500/30 hover:text-emerald-300'}`}
+                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300 cursor-default shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                : 'bg-white/5 border-white/10 text-white/60 hover:bg-emerald-500/20 hover:border-emerald-500/30 hover:text-emerald-300'}`}
           >
-            <span className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-slate-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-white/30'}`} />
             {spotifyConnected ? 'Spotify Connected' : 'Connect Spotify'}
           </button>
 
           <button
+            type="button"
             disabled={youtubeConnected}
-            onClick={() => {
-              if (!youtubeConnected) {
-                window.location.href = '/api/auth/youtube'
-                setYouTubeConnected(true)
-              }
-            }}
+            onClick={() => !youtubeConnected && openAuthPopup('youtube')}
             className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
               ${youtubeConnected 
-                ? 'bg-red-500/10 border-red-500/20 text-red-400 cursor-default' 
-                : 'bg-white/5 border-white/10 text-slate-300 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300'}`}
+                ? 'bg-red-500/20 border-red-500/30 text-red-300 cursor-default shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                : 'bg-white/5 border-white/10 text-white/60 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300'}`}
           >
-            <span className={`w-2 h-2 rounded-full ${youtubeConnected ? 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.6)]' : 'bg-slate-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${youtubeConnected ? 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)] animate-pulse' : 'bg-white/30'}`} />
             {youtubeConnected ? 'YouTube Connected' : 'Connect YouTube'}
           </button>
         </div>
@@ -181,7 +190,7 @@ export default function ConversionWizard () {
             ${loading ? 'cursor-wait' : 'hover:scale-[1.02] active:scale-[0.98]'}
             disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
         >
-          <div className={`absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 transition-opacity duration-300 ${loading ? 'opacity-80' : 'opacity-100 group-hover:opacity-90'}`} />
+          <div className={`absolute inset-0 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 transition-opacity duration-300 ${loading ? 'opacity-80' : 'opacity-100 group-hover:opacity-90'}`} />
           <div className="relative flex items-center justify-center gap-2">
             {loading ? (
               <>
@@ -193,8 +202,14 @@ export default function ConversionWizard () {
               </>
             ) : (
               <>
-                <span>Start Conversion</span>
-                <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                <span>
+                  {!url ? 'Enter Playlist URL' :
+                   from === to ? 'Select Different Target' :
+                   (from === 'Spotify' && !spotifyConnected) ? 'Connect Spotify to Start' :
+                   (from === 'YouTube Music' && !youtubeConnected) ? 'Connect YouTube to Start' :
+                   'Start Conversion'}
+                </span>
+                <svg className={`w-4 h-4 transition-transform group-hover:translate-x-1 ${(!url || from === to || ((from === 'Spotify') && !spotifyConnected) || ((from === 'YouTube Music') && !youtubeConnected)) ? 'hidden' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
               </>
             )}
           </div>
@@ -222,20 +237,20 @@ export default function ConversionWizard () {
                 </div>
                 <div>
                   <h3 className='font-semibold text-white'>Conversion Complete</h3>
-                  <p className='text-xs text-slate-400'>{result.matched_tracks} tracks matched</p>
+                  <p className='text-xs text-white/60'>{result.matched_tracks} tracks matched</p>
                 </div>
               </div>
               
               <div className="flex gap-2">
                 <button
                   onClick={() => setResult({ ...result, __tab: 'matched' })}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${!result.__tab || result.__tab === 'matched' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${!result.__tab || result.__tab === 'matched' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
                 >
                   Matched
                 </button>
                 <button
                   onClick={() => setResult({ ...result, __tab: 'unmatched' })}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${result.__tab === 'unmatched' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${result.__tab === 'unmatched' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
                 >
                   Unmatched
                 </button>
@@ -252,7 +267,7 @@ export default function ConversionWizard () {
                     }}
                     className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-xs font-medium text-white group"
                   >
-                    <svg className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <svg className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     Copy Link
                   </button>
                   <a
@@ -279,12 +294,12 @@ export default function ConversionWizard () {
                       />
                     ) : (
                       <div className='w-10 h-10 rounded-md bg-white/10 flex items-center justify-center'>
-                        <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+                        <svg className="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
                       </div>
                     )}
                     <div className='flex-1 min-w-0'>
                       <p className='text-sm font-medium text-white truncate'>{m.source.name}</p>
-                      <p className='text-xs text-slate-400 truncate'>{m.source.artists}</p>
+                      <p className='text-xs text-white/60 truncate'>{m.source.artists}</p>
                     </div>
                   </div>
                 ))
@@ -323,16 +338,16 @@ export default function ConversionWizard () {
               onClick={e => e.stopPropagation()}
               className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-slate-900 border border-white/10 shadow-2xl"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-blue-500/10 to-purple-500/10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-purple-500/10" />
               
               <div className="relative p-8 text-center space-y-6">
-                <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                 </div>
 
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold text-white">Success!</h2>
-                  <p className="text-slate-400">
+                  <p className="text-white/60">
                     Your playlist has been converted to <span className="text-white font-medium">{result.to}</span>
                   </p>
                 </div>

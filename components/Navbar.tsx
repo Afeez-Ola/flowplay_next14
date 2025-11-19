@@ -20,10 +20,10 @@ export function Navbar() {
           href="/"
           className="flex items-center gap-2 group"
         >
-          <div className="relative w-8 h-8 overflow-hidden rounded-lg shadow-lg shadow-emerald-500/20 transition-transform duration-300 group-hover:scale-110">
+          <div className="relative w-8 h-8 overflow-hidden rounded-lg shadow-lg shadow-orange-500/20 transition-transform duration-300 group-hover:scale-110">
              <img src="/logo.png" alt="FlowPlay Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="text-lg font-bold tracking-wide text-transparent bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text">
+          <span className="text-lg font-bold tracking-wide text-transparent bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text">
             FlowPlay
           </span>
         </Link>
