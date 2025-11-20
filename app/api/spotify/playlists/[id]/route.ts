@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server'
-import { getSpotifyToken } from '@/lib/getSpotifyToken'
+import { cookies } from 'next/headers'
 
 export async function GET (
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const token = getSpotifyToken(req)
+  // Always read from real server-side cookies (App Router)
+  let spotifyToken = cookies().get('spotify_access_token')?.value || null;
 
-  if (!token) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  // Fallback for manual cookie forwarding (from convert → playlist)
+  if (!spotifyToken) {
+    const cookieHeader = req.headers.get('cookie') || '';
+    const match = cookieHeader.match(/spotify_access_token=([^;]+)/);
+    spotifyToken = match?.[1] || null;
+  }
+
+  if (!spotifyToken) {
+    return NextResponse.json(
+      { error: 'Spotify not authenticated' },
+      { status: 401 }
+    );
   }
 
   const playlistId = params.id
@@ -16,7 +27,7 @@ export async function GET (
   const res = await fetch(
     `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
     {
-      headers: { Authorization: 'Bearer ' + token }
+      headers: { Authorization: 'Bearer ' + spotifyToken }
     }
   )
 

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getSpotifyToken } from '@/lib/getSpotifyToken'
+import { cookies } from 'next/headers'
 
-function getYoutubeToken (req: Request) {
-  const cookie = req.headers.get('cookie') || ''
-  const match = cookie.match(/youtube_access_token=([^;]+)/)
-  return match?.[1] || null
+function getYoutubeToken() {
+  return cookies().get('youtube_access_token')?.value || null;
 }
 
 export async function POST (req: Request) {
@@ -41,9 +39,7 @@ export async function POST (req: Request) {
     }
 
     // Get Spotify token
-    const cookieHeader = req.headers.get('cookie') || '';
-    const spotifyMatch = cookieHeader.match(/spotify_access_token=([^;]+)/);
-    const spotifyToken = spotifyMatch?.[1] || null;
+    const spotifyToken = cookies().get('spotify_access_token')?.value || null;
     if (!spotifyToken) {
       return NextResponse.json(
         { error: 'Spotify not authenticated' },
@@ -57,8 +53,9 @@ export async function POST (req: Request) {
     const trackRes = await fetch(
       `${appUrl}/api/spotify/playlists/${playlistId}`,
       {
+        credentials: "include",
         headers: {
-          cookie: req.headers.get('cookie') || ''
+          Cookie: cookies().toString()
         }
       }
     )
@@ -87,7 +84,7 @@ export async function POST (req: Request) {
     }
 
     if (to === 'YouTube Music') {
-      const youtubeToken = getYoutubeToken(req)
+      const youtubeToken = getYoutubeToken()
       if (!youtubeToken) {
         return NextResponse.json(
           { error: 'YouTube not authenticated' },

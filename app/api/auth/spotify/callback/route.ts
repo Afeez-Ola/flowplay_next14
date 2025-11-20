@@ -55,10 +55,10 @@ export async function GET (req: Request) {
 
     const cookieOpts = {
       httpOnly: true,
-      secure: true,
+      secure: false, // IMPORTANT: must be false on http://localhost or http://127.0.0.1
       sameSite: 'lax' as const,
-      path: '/'
-    }
+      path: '/',
+    };
 
     const responseHtml = `
       <html>

@@ -15,6 +15,7 @@ export default function ConversionWizard () {
   const [youtubeConnected, setYouTubeConnected] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [popup, setPopup] = useState<Window | null>(null);
+  const [deezerConnected, setDeezerConnected] = useState(false)
 
   // Poll for auth status
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function ConversionWizard () {
     }
     async function checkAuth() {
       try {
-        const res = await fetch("/api/auth/status");
+        const res = await fetch("/api/auth/status", { credentials: "include" });
         const data = await res.json();
         if (data.spotify) setSpotifyConnected(true);
         if (data.youtube) setYouTubeConnected(true);
@@ -164,7 +165,7 @@ export default function ConversionWizard () {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-1 gap-4 pt-2 md:grid-cols-3">
           <div>
             <button
               type="button"
@@ -225,6 +226,41 @@ export default function ConversionWizard () {
               </div>
             )}
           </div>
+          <div>
+            <button
+              type="button"
+              disabled={deezerConnected}
+              onClick={() => {
+                if (!deezerConnected) {
+                  alert('Deezer connection coming soon');
+                }
+              }}
+              className={`flex items-center justify-center gap-2 w-full p-3 text-xs font-medium rounded-xl transition-all duration-300 border
+                ${deezerConnected
+                  ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300 cursor-default shadow-[0_0_15px_rgba(34,211,238,0.1)]'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-cyan-500/20 hover:border-cyan-500/30 hover:text-cyan-300'}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${deezerConnected ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] animate-pulse' : 'bg-white/30'}`} />
+              {deezerConnected ? 'Deezer Connected' : 'Connect Deezer'}
+            </button>
+
+            {deezerConnected && (
+              <div className="flex items-center justify-between mt-1 text-xs text-cyan-300 animate-pulse">
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-cyan-400 animate-ping" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="10" />
+                  </svg>
+                  <span className="font-medium">Connected</span>
+                </div>
+                <button
+                  onClick={() => alert('Deezer reconnect flow coming soon')}
+                  className="px-2 py-1 text-[10px] rounded-lg bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 transition-all"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <button
@@ -241,6 +277,7 @@ export default function ConversionWizard () {
               setResult(null)
               const res = await fetch('/api/convert', {
                 method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url, from, to, playlistName })
               })
